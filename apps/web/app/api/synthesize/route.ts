@@ -4,7 +4,7 @@ import {
   SYNTHESIZE_SYSTEM_PROMPT,
   buildSynthesizeUserPrompt
 } from "@/lib/prompts/system-synthesize"
-import type { Answer, Question } from "@promptcraft/shared"
+import type { Answer, Question } from "@/lib/shared-types"
 
 function corsHeaders(_req: NextRequest) {
   return {

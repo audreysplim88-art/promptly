@@ -19,8 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@promptcraft/shared": ["../../packages/shared/src/types.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": [

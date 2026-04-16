@@ -4,7 +4,7 @@ import {
   INTERVIEW_SYSTEM_PROMPT,
   buildInterviewUserPrompt
 } from "@/lib/prompts/system-interview"
-import type { InterviewResponse } from "@promptcraft/shared"
+import type { InterviewResponse } from "@/lib/shared-types"
 
 // Dev: allow all origins so the content script (running on claude.ai, chatgpt.com etc.)
 // can reach localhost. In production this should be locked to known extension IDs.
