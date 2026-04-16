@@ -4,14 +4,20 @@ import {
   SYNTHESIZE_SYSTEM_PROMPT,
   buildSynthesizeUserPrompt
 } from "@/lib/prompts/system-synthesize"
-import type { Answer, Question } from "@/lib/shared-types"
+import type { Answer, Domain, Question } from "@/lib/shared-types"
 
 function corsHeaders(_req: NextRequest) {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Promptly-Secret"
   }
+}
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.PROMPTLY_API_SECRET
+  if (!secret) return true
+  return req.headers.get("x-promptly-secret") === secret
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -21,10 +27,14 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
 
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers })
+  }
+
   let body: {
     sessionId: string
     goal: string
-    domain: string
+    domain: Domain
     questions: Question[]
     answers: Answer[]
   }
@@ -80,6 +90,13 @@ export async function POST(req: NextRequest) {
             }
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"))
+        } catch (streamErr) {
+          console.error("[/api/synthesize] Stream error:", streamErr)
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: "Stream interrupted — please try again" })}\n\n`)
+            )
+          } catch {}
         } finally {
           controller.close()
         }

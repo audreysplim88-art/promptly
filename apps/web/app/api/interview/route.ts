@@ -6,14 +6,22 @@ import {
 } from "@/lib/prompts/system-interview"
 import type { InterviewResponse } from "@/lib/shared-types"
 
-// Dev: allow all origins so the content script (running on claude.ai, chatgpt.com etc.)
-// can reach localhost. In production this should be locked to known extension IDs.
+// Content scripts run on the host AI tool page (e.g. claude.ai), so their
+// Origin header is the host page — not the extension ID. We can't restrict
+// by Origin, so we use a shared static secret instead to block arbitrary callers.
 function corsHeaders(_req: NextRequest) {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Promptly-Secret"
   }
+}
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.PROMPTLY_API_SECRET
+  // If no secret is configured (local dev), allow all requests
+  if (!secret) return true
+  return req.headers.get("x-promptly-secret") === secret
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -22,6 +30,10 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
+
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers })
+  }
 
   let goal: string
   try {
