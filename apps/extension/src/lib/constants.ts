@@ -40,14 +40,16 @@ export const AI_TOOL_SELECTORS = [
   }
 ]
 
-export const DOMAIN_LABELS: Record<string, string> = {
+import type { Domain } from "@promptcraft/shared"
+
+export const DOMAIN_LABELS: Record<Domain, string> = {
   general: "General",
   creative: "Creative",
   technical: "Technical",
   professional: "Professional"
 }
 
-export const DOMAIN_COLORS: Record<string, string> = {
+export const DOMAIN_COLORS: Record<Domain, string> = {
   general: "bg-green-100 text-green-800 border-green-200",
   creative: "bg-purple-100 text-purple-800 border-purple-200",
   technical: "bg-blue-100 text-blue-800 border-blue-200",
