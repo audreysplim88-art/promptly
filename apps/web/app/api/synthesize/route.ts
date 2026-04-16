@@ -4,7 +4,7 @@ import {
   SYNTHESIZE_SYSTEM_PROMPT,
   buildSynthesizeUserPrompt
 } from "@/lib/prompts/system-synthesize"
-import type { Answer, Question } from "@/lib/shared-types"
+import type { Answer, Domain, Question } from "@/lib/shared-types"
 
 function corsHeaders(_req: NextRequest) {
   return {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   let body: {
     sessionId: string
     goal: string
-    domain: string
+    domain: Domain
     questions: Question[]
     answers: Answer[]
   }

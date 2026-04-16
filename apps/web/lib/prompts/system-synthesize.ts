@@ -61,9 +61,11 @@ The generated prompt should be noticeably better than what the user would write 
 - An explicit output format
 - A clear, actionable first step`
 
+import type { Domain } from "@/lib/shared-types"
+
 export const buildSynthesizeUserPrompt = (
   goal: string,
-  domain: string,
+  domain: Domain,
   qa: Array<{ question: string; answer: string | string[] }>
 ): string => {
   const formattedQA = qa
