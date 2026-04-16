@@ -249,8 +249,12 @@ export default function Overlay() {
       }) ?? false
 
   const handleInject = () => {
-    injectPrompt(output)
-    close()
+    const ok = injectPrompt(output)
+    if (ok) {
+      close()
+    } else {
+      setError("Couldn't find the chat input. Try 'Copy to clipboard' instead.")
+    }
   }
 
   const handleCopy = async () => {
