@@ -1,0 +1,51 @@
+export const API_BASE_URL =
+  process.env.PLASMO_PUBLIC_API_BASE_URL ?? "http://localhost:3000"
+
+export const FREE_DAILY_LIMIT = 10
+
+export const AI_TOOL_SELECTORS = [
+  {
+    host: "chat.openai.com",
+    selector: "#prompt-textarea",
+    inputMethod: "prosemirror" as const
+  },
+  {
+    host: "chatgpt.com",
+    selector: "#prompt-textarea",
+    inputMethod: "prosemirror" as const
+  },
+  {
+    host: "claude.ai",
+    selector: '[contenteditable="true"].ProseMirror',
+    inputMethod: "prosemirror" as const
+  },
+  {
+    host: "gemini.google.com",
+    selector: ".ql-editor",
+    inputMethod: "quill" as const
+  },
+  {
+    host: "perplexity.ai",
+    selector: "textarea[placeholder]",
+    inputMethod: "textarea" as const
+  },
+  {
+    host: "copilot.microsoft.com",
+    selector: "textarea#userInput",
+    inputMethod: "textarea" as const
+  }
+]
+
+export const DOMAIN_LABELS: Record<string, string> = {
+  general: "General",
+  creative: "Creative",
+  technical: "Technical",
+  professional: "Professional"
+}
+
+export const DOMAIN_COLORS: Record<string, string> = {
+  general: "bg-green-100 text-green-800 border-green-200",
+  creative: "bg-purple-100 text-purple-800 border-purple-200",
+  technical: "bg-blue-100 text-blue-800 border-blue-200",
+  professional: "bg-orange-100 text-orange-800 border-orange-200"
+}
