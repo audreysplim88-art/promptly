@@ -277,7 +277,6 @@ export default function Overlay() {
     <div
       onKeyDown={stopKeys}
       onKeyUp={stopKeys}
-      onKeyPress={stopKeys}
       style={{ all: "initial" }}>
       {/* Trigger button — fixed bottom-right */}
       <button
