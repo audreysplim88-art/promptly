@@ -67,12 +67,16 @@ export async function synthesizePrompt(
       if (data === "[DONE]") break
       try {
         const parsed = JSON.parse(data)
+        if (parsed.error) {
+          throw new Error(parsed.error)
+        }
         if (parsed.chunk) {
           fullText += parsed.chunk
           onChunk?.(parsed.chunk)
         }
-      } catch {
-        // ignore parse errors for partial SSE lines
+      } catch (e) {
+        if (e instanceof SyntaxError) continue // ignore partial SSE lines
+        throw e
       }
     }
   }

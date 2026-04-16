@@ -80,6 +80,13 @@ export async function POST(req: NextRequest) {
             }
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"))
+        } catch (streamErr) {
+          console.error("[/api/synthesize] Stream error:", streamErr)
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: "Stream interrupted — please try again" })}\n\n`)
+            )
+          } catch {}
         } finally {
           controller.close()
         }
