@@ -175,6 +175,7 @@ export default function Overlay() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll output as it streams
@@ -258,7 +259,13 @@ export default function Overlay() {
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(output)
+    try {
+      await navigator.clipboard.writeText(output)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError("Copy failed — please select and copy the text manually.")
+    }
   }
 
   // Stop ALL keyboard events from escaping the shadow DOM into the host page.
@@ -451,7 +458,7 @@ export default function Overlay() {
             <button
               onClick={handleCopy}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-              Copy to clipboard
+              {copied ? "Copied!" : "Copy to clipboard"}
             </button>
           </div>
         )}
