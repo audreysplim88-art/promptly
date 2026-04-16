@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./constants"
+import { API_BASE_URL, API_SECRET } from "./constants"
 import type { InterviewResponse, SynthesizeRequest } from "@promptcraft/shared"
 
 async function apiFetch(
@@ -9,6 +9,9 @@ async function apiFetch(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>)
+  }
+  if (API_SECRET) {
+    headers["X-Promptly-Secret"] = API_SECRET
   }
   if (token) {
     headers["Authorization"] = `Bearer ${token}`

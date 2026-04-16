@@ -10,8 +10,14 @@ function corsHeaders(_req: NextRequest) {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Promptly-Secret"
   }
+}
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.PROMPTLY_API_SECRET
+  if (!secret) return true
+  return req.headers.get("x-promptly-secret") === secret
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -20,6 +26,10 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
+
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers })
+  }
 
   let body: {
     sessionId: string

@@ -1,6 +1,10 @@
 export const API_BASE_URL =
   process.env.PLASMO_PUBLIC_API_BASE_URL ?? "http://localhost:3000"
 
+// Sent as X-Promptly-Secret on every API request.
+// Must match PROMPTLY_API_SECRET in the web app's environment variables.
+export const API_SECRET = process.env.PLASMO_PUBLIC_API_SECRET ?? ""
+
 export const FREE_DAILY_LIMIT = 10
 
 export const AI_TOOL_SELECTORS = [
