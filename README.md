@@ -1,6 +1,6 @@
 # Promptly
 
-> Craft better AI prompts through a quick expert interview — works on ChatGPT, Claude, Gemini, and Perplexity.
+> Craft better AI prompts through a quick expert interview — works on ChatGPT, Claude, Gemini, Perplexity, and Copilot.
 
 ![Promptly panel showing the interview flow](store-assets/screenshots/2-interview-questions.png)
 
@@ -9,11 +9,20 @@
 Most people get poor results from AI tools because they write vague, context-free prompts. Promptly fixes this by acting as a prompt engineer on your behalf.
 
 1. Click the **Promptly button** (bottom-right of any supported AI tool page)
-2. Describe your goal in plain language — *"I want to clean my deck for summer"* or *"Add dark mode to my React app"*
-3. Answer 4–6 targeted interview questions about your context, constraints, and desired format
-4. Promptly generates a polished, expert-quality prompt and **inserts it directly into the AI tool's text box**
+2. Choose your **output style** — Standard, Concise, or Developer
+3. Describe your goal in plain language — *"I want to clean my deck for summer"* or *"Add dark mode to my React app"*
+4. Answer 4–6 targeted interview questions about your context, constraints, and desired format
+5. Promptly generates a polished, expert-quality prompt and **inserts it directly into the AI tool's text box**
 
 Works for everyday tasks (cooking, home projects, emails) and technical ones (architecture decisions, code features, debugging).
+
+### Output styles
+
+| Style | Best for | Length |
+|---|---|---|
+| **Standard** | Most tasks — full 10-technique prompt engineering | 100–250 words |
+| **Concise** | Repeat users, simple tasks — same quality, fewer tokens | 60–120 words |
+| **Developer** | AI coding tools (Cursor, Copilot, Claude Code) — direct imperatives, no fluff | 60–120 words |
 
 ## Supported AI tools
 
@@ -60,7 +69,7 @@ promptly/
 ## Running locally
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20+
 - pnpm (`npm install -g pnpm`)
 - An [Anthropic API key](https://console.anthropic.com)
 
@@ -126,6 +135,14 @@ The zip at `build/chrome-mv3-prod.zip` is ready for Chrome Web Store submission.
 - **Phase 2** — Auth (Clerk) + usage tiers (free: 10 prompts/day, Pro: unlimited)
 - **Phase 3** — Stripe payments + upgrade flow
 - **Phase 4** — Prompt history, Firefox AMO release
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, dev workflow, and PR guidelines.
+
+## Security
+
+To report a vulnerability privately, see [SECURITY.md](SECURITY.md).
 
 ## Privacy
 

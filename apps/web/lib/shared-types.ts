@@ -1,5 +1,7 @@
 export type Domain = "general" | "creative" | "technical" | "professional";
 
+export type OutputStyle = "standard" | "concise" | "developer";
+
 export type QuestionType = "text" | "radio" | "checkbox";
 
 export type Dimension =
@@ -43,6 +45,7 @@ export interface SynthesizeRequest {
   domain: Domain;
   questions: Question[];
   answers: Answer[];
+  outputStyle: OutputStyle;
 }
 
 export type Tier = "free" | "pro";

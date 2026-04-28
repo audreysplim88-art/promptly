@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { anthropic, MODEL } from "@/lib/claude"
 import {
-  SYNTHESIZE_SYSTEM_PROMPT,
+  getSynthesizeSystemPrompt,
   buildSynthesizeUserPrompt
 } from "@/lib/prompts/system-synthesize"
-import type { Answer, Domain, Question } from "@/lib/shared-types"
+import type { Answer, Domain, OutputStyle, Question } from "@/lib/shared-types"
+import { API_LIMITS } from "@/lib/config"
 
 function corsHeaders(_req: NextRequest) {
   return {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     domain: Domain
     questions: Question[]
     answers: Answer[]
+    outputStyle: OutputStyle
   }
 
   try {
@@ -45,11 +47,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers })
   }
 
-  const { goal, domain, questions, answers } = body
+  const { goal, domain, questions, answers, outputStyle } = body
 
-  if (!goal || !domain || !questions || !answers) {
+  if (!goal || !domain || !questions || !answers || !outputStyle) {
     return NextResponse.json(
       { error: "Missing required fields" },
+      { status: 400, headers }
+    )
+  }
+
+  const validStyles: OutputStyle[] = ["standard", "concise", "developer"]
+  if (!validStyles.includes(outputStyle)) {
+    return NextResponse.json(
+      { error: "Invalid outputStyle" },
       { status: 400, headers }
     )
   }
@@ -66,12 +76,12 @@ export async function POST(req: NextRequest) {
   try {
     const stream = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2048,
-      system: SYNTHESIZE_SYSTEM_PROMPT,
+      max_tokens: API_LIMITS.synthesizeMaxTokens,
+      system: getSynthesizeSystemPrompt(outputStyle),
       messages: [
         {
           role: "user",
-          content: buildSynthesizeUserPrompt(goal, domain, qa)
+          content: buildSynthesizeUserPrompt(goal, domain, qa, outputStyle)
         }
       ],
       stream: true

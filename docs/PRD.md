@@ -58,11 +58,16 @@ Promptly is a browser extension that acts as a prompt engineer on the user's beh
 
 - **In-page overlay panel** slides in from the right on supported AI tool pages
 - **Goal input** — plain-language text box, no structure required
+- **Output style selector** — three modes chosen before submitting a goal:
+  - *Standard* — full 10-technique prompt engineering, 100–250 words
+  - *Concise* — essential techniques only (role, context, format, constraints), 60–120 words
+  - *Developer* — imperative task/stack/constraints/format/verification structure for AI coding tools, 60–120 words
 - **Domain detection** — Claude classifies the goal as general / creative / technical / professional with confidence score; user can override
 - **Interview engine** — Claude generates 4–6 targeted questions (text, radio, checkbox) specific to the user's goal
-- **Prompt synthesis** — Claude applies 10 prompt engineering techniques to generate the final prompt, streamed progressively
+- **Prompt synthesis** — Claude applies prompt engineering techniques appropriate to the selected style, streamed progressively
 - **One-click injection** — inserts the generated prompt directly into the AI tool's textarea
 - **Copy to clipboard** — fallback for unsupported tools
+- **API security** — shared secret header (`X-Promptly-Secret`) protects backend routes
 - **Supported tools** — ChatGPT, Claude, Gemini, Perplexity, Microsoft Copilot
 
 ### Phase 2 — Auth + distribution
@@ -99,7 +104,9 @@ The core IP is two Claude system prompts:
 - Cover 4–6 prompt engineering dimensions: goal, context, audience, format, constraints, tone
 - Adapt question count and type by domain (technical goals get more questions)
 
-**Synthesis system prompt** instructs Claude to apply all of:
+**Synthesis system prompt** selects from three output styles at generation time:
+
+*Standard* — applies all 10 techniques:
 1. Role assignment — specific expert persona
 2. Context setting — all background before the task
 3. Audience specification — who the output is for
@@ -110,6 +117,10 @@ The core IP is two Claude system prompts:
 8. Examples instruction — "show, don't tell"
 9. Verification step — for technical: review for edge cases
 10. Closing kickoff — end with "Begin by..." to prevent meta-commentary
+
+*Concise* — applies role, context, format, and constraints only; hard word ceiling of 60–120 words.
+
+*Developer* — no role preamble; imperative language; structured as Task → Stack → Constraints → Output Format → Verification; 60–120 word ceiling.
 
 ---
 

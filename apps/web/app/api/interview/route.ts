@@ -5,6 +5,7 @@ import {
   buildInterviewUserPrompt
 } from "@/lib/prompts/system-interview"
 import type { InterviewResponse } from "@/lib/shared-types"
+import { API_LIMITS } from "@/lib/config"
 
 // Content scripts run on the host AI tool page (e.g. claude.ai), so their
 // Origin header is the host page — not the extension ID. We can't restrict
@@ -50,9 +51,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (goal.length > 500) {
+  if (goal.length > API_LIMITS.goalMaxChars) {
     return NextResponse.json(
-      { error: "Goal must be 500 characters or fewer" },
+      { error: `Goal must be ${API_LIMITS.goalMaxChars} characters or fewer` },
       { status: 400, headers }
     )
   }
@@ -60,12 +61,17 @@ export async function POST(req: NextRequest) {
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1500,
+      max_tokens: API_LIMITS.interviewMaxTokens,
       system: INTERVIEW_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildInterviewUserPrompt(goal) }]
     })
 
-    const rawText = (message.content[0] as { type: "text"; text: string }).text
+    // B-006: type guard — content[0] may not be a text block
+    const firstBlock = message.content[0]
+    if (!firstBlock || firstBlock.type !== "text") {
+      throw new Error("Unexpected response format from Claude")
+    }
+    const rawText = firstBlock.text
 
     // Strip any accidental markdown code fences
     const cleaned = rawText.replace(/^```(?:json)?\n?|\n?```$/g, "").trim()
