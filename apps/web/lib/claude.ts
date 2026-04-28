@@ -20,16 +20,21 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-// B-009: fail loudly at startup rather than producing cryptic errors at request time
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error(
-    "[Promptly] ANTHROPIC_API_KEY is not set. " +
-    "Copy apps/web/.env.local.example to apps/web/.env.local and add your key."
-  )
-}
+// B-009: validate at request time, not at module-load time.
+// Vercel injects env vars at runtime; throwing here during `next build`
+// causes the build to fail because the key is not present at compile time.
+let _anthropic: Anthropic | null = null
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-})
+export function getAnthropicClient(): Anthropic {
+  if (_anthropic) return _anthropic
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error(
+      "[Promptly] ANTHROPIC_API_KEY is not set. " +
+      "Copy apps/web/.env.local.example to apps/web/.env.local and add your key."
+    )
+  }
+  _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return _anthropic
+}
 
 export const MODEL = "claude-sonnet-4-6"

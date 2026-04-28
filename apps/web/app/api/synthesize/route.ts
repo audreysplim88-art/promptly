@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { anthropic, MODEL } from "@/lib/claude"
+import { getAnthropicClient, MODEL } from "@/lib/claude"
 import {
   getSynthesizeSystemPrompt,
   buildSynthesizeUserPrompt
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder()
 
   try {
-    const stream = await anthropic.messages.create({
+    const stream = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: API_LIMITS.synthesizeMaxTokens,
       system: getSynthesizeSystemPrompt(outputStyle),

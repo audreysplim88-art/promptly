@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { anthropic, MODEL } from "@/lib/claude"
+import { getAnthropicClient, MODEL } from "@/lib/claude"
 import {
   INTERVIEW_SYSTEM_PROMPT,
   buildInterviewUserPrompt
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: API_LIMITS.interviewMaxTokens,
       system: INTERVIEW_SYSTEM_PROMPT,
