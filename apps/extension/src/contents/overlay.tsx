@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import { generateInterview, synthesizePrompt } from "../lib/api"
 import { AI_TOOL_SELECTORS, DOMAIN_COLORS, DOMAIN_LABELS } from "../lib/constants"
-import type { Answer, Domain, InterviewResponse, Question } from "@promptcraft/shared"
+import type { Answer, Domain, InterviewResponse, OutputStyle, Question } from "@promptcraft/shared"
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -176,6 +176,7 @@ export default function Overlay() {
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [outputStyle, setOutputStyle] = useState<OutputStyle>("standard")
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll output as it streams
@@ -192,6 +193,7 @@ export default function Overlay() {
     setAnswers({})
     setOutput("")
     setError(null)
+    setOutputStyle("standard")
   }
 
   const close = () => { setOpen(false); reset() }
@@ -225,7 +227,8 @@ export default function Overlay() {
           goal,
           domain: interview.domain,
           questions: interview.questions,
-          answers: answerList
+          answers: answerList,
+          outputStyle
         },
         undefined,
         (chunk) => setOutput((prev) => prev + chunk)
@@ -340,6 +343,36 @@ export default function Overlay() {
                 <h2 className="text-base font-semibold text-gray-900">What do you want to do?</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   Describe your goal in plain language — I'll ask you a few quick questions, then craft the perfect prompt for you.
+                </p>
+              </div>
+
+              {/* Output style selector */}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Output style</p>
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden bg-gray-50 p-0.5 gap-0.5">
+                  {(
+                    [
+                      { value: "standard",  label: "Standard"  },
+                      { value: "concise",   label: "Concise"   },
+                      { value: "developer", label: "Developer" }
+                    ] as { value: OutputStyle; label: string }[]
+                  ).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setOutputStyle(value)}
+                      className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
+                        outputStyle === value
+                          ? "bg-white text-indigo-700 shadow-sm border border-gray-200"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {outputStyle === "standard"  && "Full technique set. Best for most tasks."}
+                  {outputStyle === "concise"   && "40–60% shorter. Same quality, fewer words."}
+                  {outputStyle === "developer" && "Direct imperatives for AI coding tools."}
                 </p>
               </div>
 
