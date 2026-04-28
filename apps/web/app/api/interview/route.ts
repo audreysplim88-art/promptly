@@ -7,6 +7,10 @@ import {
 import type { InterviewResponse } from "@/lib/shared-types"
 import { API_LIMITS } from "@/lib/config"
 import { corsHeaders, isAuthorized } from "@/lib/api-middleware"
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
+
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(req) })
@@ -17,6 +21,21 @@ export async function POST(req: NextRequest) {
 
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers })
+  }
+
+  // B-001: rate limiting — 20 interview requests per IP per hour
+  const rl = checkRateLimit(`interview:${getClientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests — please try again later." },
+      {
+        status: 429,
+        headers: {
+          ...headers,
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000))
+        }
+      }
+    )
   }
 
   let goal: string

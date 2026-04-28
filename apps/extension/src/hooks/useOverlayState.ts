@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { generateInterview, synthesizePrompt } from "../lib/api"
 import { AI_TOOL_SELECTORS } from "../lib/constants"
 import type { Answer, InterviewResponse, OutputStyle } from "@promptcraft/shared"
@@ -74,7 +74,17 @@ export function useOverlayState(): OverlayState {
   const [copied, setCopied] = useState(false)
   const [outputStyle, setOutputStyle] = useState<OutputStyle>("standard")
 
+  // B-005: hold a ref to the active stream's abort function so we can cancel on close
+  const abortStreamRef = useRef<(() => void) | null>(null)
+
+  // Cancel any in-flight stream when the hook unmounts (e.g. extension unload)
+  useEffect(() => {
+    return () => { abortStreamRef.current?.() }
+  }, [])
+
   const reset = () => {
+    abortStreamRef.current?.()
+    abortStreamRef.current = null
     setStep("goal")
     setGoal("")
     setInterviewState(null)
@@ -108,23 +118,29 @@ export function useOverlayState(): OverlayState {
     }))
     setStep("generating")
     setOutput("")
+    const { promise, abort } = synthesizePrompt(
+      {
+        sessionId: interview.sessionId,
+        goal,
+        domain: interview.domain,
+        questions: interview.questions,
+        answers: answerList,
+        outputStyle
+      },
+      undefined,
+      (chunk) => setOutput((prev) => prev + chunk)
+    )
+    abortStreamRef.current = abort
     try {
-      await synthesizePrompt(
-        {
-          sessionId: interview.sessionId,
-          goal,
-          domain: interview.domain,
-          questions: interview.questions,
-          answers: answerList,
-          outputStyle
-        },
-        undefined,
-        (chunk) => setOutput((prev) => prev + chunk)
-      )
+      await promise
       setStep("output")
     } catch (e) {
+      // Silently ignore cancellations triggered by close/reset
+      if ((e as Error).message === "Generation cancelled.") return
       setError((e as Error).message)
       setStep("interview")
+    } finally {
+      abortStreamRef.current = null
     }
   }
 

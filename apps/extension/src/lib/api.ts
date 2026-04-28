@@ -1,6 +1,8 @@
 import { API_BASE_URL, API_SECRET } from "./constants"
 import type { InterviewResponse, SynthesizeRequest } from "@promptcraft/shared"
 
+const SYNTHESIZE_TIMEOUT_MS = 30_000
+
 async function apiFetch(
   path: string,
   options: RequestInit = {},
@@ -35,56 +37,90 @@ export async function generateInterview(
   return res.json()
 }
 
-export async function synthesizePrompt(
+// B-004 / B-005: returns an AbortController so callers can cancel mid-stream.
+// A built-in 30-second timeout auto-aborts if the backend stalls.
+export function synthesizePrompt(
   req: SynthesizeRequest,
   token?: string,
   onChunk?: (text: string) => void
-): Promise<string> {
-  const res = await apiFetch(
-    "/api/synthesize",
-    { method: "POST", body: JSON.stringify(req) },
-    token
-  )
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error ?? `Synthesis failed: ${res.status}`)
-  }
+): { promise: Promise<string>; abort: () => void } {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort("timeout"), SYNTHESIZE_TIMEOUT_MS)
 
-  // Handle streaming SSE response
-  const reader = res.body?.getReader()
-  const decoder = new TextDecoder()
-  let fullText = ""
-
-  if (!reader) throw new Error("No response body")
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    const chunk = decoder.decode(value, { stream: true })
-    const lines = chunk.split("\n")
-
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue
-      const data = line.slice(6).trim()
-      if (data === "[DONE]") break
-      try {
-        const parsed = JSON.parse(data)
-        if (parsed.error) {
-          throw new Error(parsed.error)
-        }
-        if (parsed.chunk) {
-          fullText += parsed.chunk
-          onChunk?.(parsed.chunk)
-        }
-      } catch (e) {
-        if (e instanceof SyntaxError) continue // ignore partial SSE lines
-        throw e
+  const promise = (async (): Promise<string> => {
+    let res: Response
+    try {
+      res = await apiFetch(
+        "/api/synthesize",
+        { method: "POST", body: JSON.stringify(req), signal: controller.signal },
+        token
+      )
+    } catch (e) {
+      if (controller.signal.aborted) {
+        const reason = controller.signal.reason
+        throw new Error(
+          reason === "timeout"
+            ? "Generation timed out — please try again."
+            : "Generation cancelled."
+        )
       }
+      throw e
+    } finally {
+      clearTimeout(timeoutId)
     }
-  }
 
-  return fullText
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error ?? `Synthesis failed: ${res.status}`)
+    }
+
+    // Handle streaming SSE response
+    const reader = res.body?.getReader()
+    const decoder = new TextDecoder()
+    let fullText = ""
+
+    if (!reader) throw new Error("No response body")
+
+    // B-005: cancel the reader when the controller is aborted
+    const onAbort = () => { reader.cancel().catch(() => {}) }
+    controller.signal.addEventListener("abort", onAbort)
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        // Stop processing silently if aborted mid-stream
+        if (controller.signal.aborted) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split("\n")
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue
+          const data = line.slice(6).trim()
+          if (data === "[DONE]") break
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.error) throw new Error(parsed.error)
+            if (parsed.chunk) {
+              fullText += parsed.chunk
+              onChunk?.(parsed.chunk)
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue // ignore partial SSE lines
+            throw e
+          }
+        }
+      }
+    } finally {
+      controller.signal.removeEventListener("abort", onAbort)
+    }
+
+    return fullText
+  })()
+
+  return { promise, abort: () => controller.abort("cancelled") }
 }
 
 export async function fetchUsage(token?: string) {

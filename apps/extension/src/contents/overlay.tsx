@@ -3,6 +3,7 @@ import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import React, { useEffect, useRef } from "react"
 
 import { DomainPill } from "../components/DomainPill"
+import { ErrorBoundary } from "../components/ErrorBoundary"
 import { QuestionCard } from "../components/QuestionCard"
 import { useOverlayState } from "../hooks/useOverlayState"
 
@@ -102,6 +103,7 @@ export default function Overlay() {
         </div>
 
         {/* Body */}
+        <ErrorBoundary onReset={reset}>
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-5">
 
           {/* ── Goal step ── */}
@@ -230,6 +232,7 @@ export default function Overlay() {
           )}
 
         </div>{/* end body */}
+        </ErrorBoundary>
 
         {/* ── Footer: generate button ── */}
         {(step === "interview" || step === "generating") && interview && step !== "output" && (
