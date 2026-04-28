@@ -20,6 +20,14 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
+// B-009: fail loudly at startup rather than producing cryptic errors at request time
+if (!process.env.ANTHROPIC_API_KEY) {
+  throw new Error(
+    "[Promptly] ANTHROPIC_API_KEY is not set. " +
+    "Copy apps/web/.env.local.example to apps/web/.env.local and add your key."
+  )
+}
+
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 })

@@ -5,6 +5,7 @@ import {
   buildSynthesizeUserPrompt
 } from "@/lib/prompts/system-synthesize"
 import type { Answer, Domain, OutputStyle, Question } from "@/lib/shared-types"
+import { API_LIMITS } from "@/lib/config"
 
 function corsHeaders(_req: NextRequest) {
   return {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
   try {
     const stream = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: API_LIMITS.synthesizeMaxTokens,
       system: getSynthesizeSystemPrompt(outputStyle),
       messages: [
         {
