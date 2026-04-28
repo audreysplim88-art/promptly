@@ -1,10 +1,10 @@
 import cssText from "data-text:../style.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef } from "react"
 
-import { generateInterview, synthesizePrompt } from "../lib/api"
-import { AI_TOOL_SELECTORS, DOMAIN_COLORS, DOMAIN_LABELS } from "../lib/constants"
-import type { Answer, Domain, InterviewResponse, OutputStyle, Question } from "@promptcraft/shared"
+import { DomainPill } from "../components/DomainPill"
+import { QuestionCard } from "../components/QuestionCard"
+import { useOverlayState } from "../hooks/useOverlayState"
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -23,253 +23,25 @@ export const getStyle: PlasmoGetStyle = () => {
   return style
 }
 
-// ─── Injection helpers ───────────────────────────────────────────────────────
-
-function detectTool() {
-  const host = window.location.hostname
-  return AI_TOOL_SELECTORS.find((t) => host.includes(t.host)) ?? null
-}
-
-function injectPrompt(text: string) {
-  const tool = detectTool()
-  if (!tool) return false
-  const el = document.querySelector(tool.selector) as HTMLElement | null
-  if (!el) return false
-
-  if (tool.inputMethod === "textarea") {
-    const nativeSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLTextAreaElement.prototype,
-      "value"
-    )?.set
-    nativeSetter?.call(el as HTMLTextAreaElement, text)
-    el.dispatchEvent(new Event("input", { bubbles: true }))
-    el.dispatchEvent(new Event("change", { bubbles: true }))
-  } else {
-    el.focus()
-    document.execCommand("selectAll", false, undefined)
-    document.execCommand("insertText", false, text)
-  }
-
-  el.style.outline = "2px solid #6366f1"
-  el.style.outlineOffset = "2px"
-  setTimeout(() => {
-    el.style.outline = ""
-    el.style.outlineOffset = ""
-  }, 1500)
-  return true
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function DomainPill({
-  domain,
-  confidence,
-  onOverride
-}: {
-  domain: Domain
-  confidence: number
-  onOverride: (d: Domain) => void
-}) {
-  const [open, setOpen] = useState(confidence < 0.75)
-  const domains: Domain[] = ["general", "creative", "technical", "professional"]
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span
-        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${DOMAIN_COLORS[domain]}`}>
-        {DOMAIN_LABELS[domain]}
-      </span>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600">
-        {confidence < 0.75 ? "Is this right?" : "Change"}
-      </button>
-      {open && (
-        <div className="flex flex-wrap gap-1.5 w-full">
-          {domains.map((d) => (
-            <button
-              key={d}
-              onClick={() => { onOverride(d); setOpen(false) }}
-              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-opacity ${d === domain ? "opacity-100" : "opacity-50 hover:opacity-100"} ${DOMAIN_COLORS[d]}`}>
-              {DOMAIN_LABELS[d]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function QuestionCard({
-  question,
-  value,
-  onChange
-}: {
-  question: Question
-  value: string | string[]
-  onChange: (v: string | string[]) => void
-}) {
-  const toggle = (opt: string, checked: boolean) => {
-    const cur = Array.isArray(value) ? value : []
-    onChange(checked ? [...cur, opt] : cur.filter((v) => v !== opt))
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium text-gray-800 leading-snug">
-        {question.prompt}
-        {question.required && <span className="ml-1 text-indigo-500 text-xs">*</span>}
-      </p>
-
-      {question.type === "text" && (
-        <textarea
-          rows={2}
-          placeholder={question.placeholder ?? "Your answer..."}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
-        />
-      )}
-
-      {question.type === "radio" && question.options?.map((opt) => (
-        <label key={opt} className="flex items-start gap-2.5 cursor-pointer group">
-          <input
-            type="radio"
-            name={question.id}
-            value={opt}
-            checked={value === opt}
-            onChange={() => onChange(opt)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-600"
-          />
-          <span className="text-sm text-gray-700 group-hover:text-gray-900 leading-snug">{opt}</span>
-        </label>
-      ))}
-
-      {question.type === "checkbox" && question.options?.map((opt) => {
-        const checked = Array.isArray(value) && value.includes(opt)
-        return (
-          <label key={opt} className="flex items-start gap-2.5 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => toggle(opt, e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-600"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-gray-900 leading-snug">{opt}</span>
-          </label>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Main overlay component ───────────────────────────────────────────────────
-
-type Step = "goal" | "loading" | "interview" | "generating" | "output"
+// ─── Overlay component ────────────────────────────────────────────────────────
 
 export default function Overlay() {
-  const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<Step>("goal")
-  const [goal, setGoal] = useState("")
-  const [interview, setInterview] = useState<InterviewResponse | null>(null)
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
-  const [output, setOutput] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [outputStyle, setOutputStyle] = useState<OutputStyle>("standard")
+  const {
+    open, step, goal, interview, answers, output, error, copied, outputStyle,
+    allRequiredAnswered,
+    setOpen, setGoal, setOutputStyle, setAnswer, setInterview,
+    reset, close,
+    handleGoalSubmit, handleAnswerSubmit, handleInject, handleCopy
+  } = useOverlayState()
+
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll output as it streams
+  // Auto-scroll as the prompt streams in
   useEffect(() => {
     if (step === "generating" && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [output, step])
-
-  const reset = () => {
-    setStep("goal")
-    setGoal("")
-    setInterview(null)
-    setAnswers({})
-    setOutput("")
-    setError(null)
-    setOutputStyle("standard")
-  }
-
-  const close = () => { setOpen(false); reset() }
-
-  const handleGoalSubmit = async () => {
-    if (!goal.trim()) return
-    setStep("loading")
-    setError(null)
-    try {
-      const data = await generateInterview(goal.trim())
-      setInterview(data)
-      setStep("interview")
-    } catch (e) {
-      setError((e as Error).message)
-      setStep("goal")
-    }
-  }
-
-  const handleAnswerSubmit = async () => {
-    if (!interview) return
-    const answerList: Answer[] = interview.questions.map((q) => ({
-      questionId: q.id,
-      value: answers[q.id] ?? ""
-    }))
-    setStep("generating")
-    setOutput("")
-    try {
-      await synthesizePrompt(
-        {
-          sessionId: interview.sessionId,
-          goal,
-          domain: interview.domain,
-          questions: interview.questions,
-          answers: answerList,
-          outputStyle
-        },
-        undefined,
-        (chunk) => setOutput((prev) => prev + chunk)
-      )
-      setStep("output")
-    } catch (e) {
-      setError((e as Error).message)
-      setStep("interview")
-    }
-  }
-
-  const setAnswer = (qId: string, val: string | string[]) =>
-    setAnswers((prev) => ({ ...prev, [qId]: val }))
-
-  const allRequiredAnswered =
-    interview?.questions
-      .filter((q) => q.required)
-      .every((q) => {
-        const v = answers[q.id]
-        if (!v) return false
-        return Array.isArray(v) ? v.length > 0 : v.trim().length > 0
-      }) ?? false
-
-  const handleInject = () => {
-    const ok = injectPrompt(output)
-    if (ok) {
-      close()
-    } else {
-      setError("Couldn't find the chat input. Try 'Copy to clipboard' instead.")
-    }
-  }
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(output)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setError("Copy failed — please select and copy the text manually.")
-    }
-  }
 
   // Stop ALL keyboard events from escaping the shadow DOM into the host page.
   // AI tools (Claude, ChatGPT etc.) capture keydown at the document level and
@@ -277,18 +49,14 @@ export default function Overlay() {
   const stopKeys = (e: React.KeyboardEvent) => e.stopPropagation()
 
   return (
-    <div
-      onKeyDown={stopKeys}
-      onKeyUp={stopKeys}
-      style={{ all: "initial" }}>
-      {/* Trigger button — fixed bottom-right */}
+    <div onKeyDown={stopKeys} onKeyUp={stopKeys} style={{ all: "initial" }}>
+
+      {/* ── Trigger button — fixed bottom-right ── */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         title="Promptly — craft a better prompt"
         className={`fixed bottom-6 right-6 z-[2147483646] flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
-          open
-            ? "bg-gray-700 text-white"
-            : "bg-indigo-600 text-white hover:bg-indigo-700"
+          open ? "bg-gray-700 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
         }`}>
         {open ? (
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -301,7 +69,7 @@ export default function Overlay() {
         )}
       </button>
 
-      {/* Side panel */}
+      {/* ── Side panel ── */}
       <div
         className={`fixed top-0 right-0 z-[2147483645] h-full w-[400px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
@@ -355,7 +123,7 @@ export default function Overlay() {
                       { value: "standard",  label: "Standard"  },
                       { value: "concise",   label: "Concise"   },
                       { value: "developer", label: "Developer" }
-                    ] as { value: OutputStyle; label: string }[]
+                    ] as const
                   ).map(({ value, label }) => (
                     <button
                       key={value}
@@ -461,9 +229,9 @@ export default function Overlay() {
             </div>
           )}
 
-        </div>
+        </div>{/* end body */}
 
-        {/* Footer actions */}
+        {/* ── Footer: generate button ── */}
         {(step === "interview" || step === "generating") && interview && step !== "output" && (
           <div className="border-t border-gray-100 px-5 py-4 shrink-0">
             <button
@@ -480,6 +248,7 @@ export default function Overlay() {
           </div>
         )}
 
+        {/* ── Footer: output actions ── */}
         {step === "output" && (
           <div className="border-t border-gray-100 px-5 py-4 shrink-0 flex flex-col gap-2">
             <button
@@ -494,15 +263,17 @@ export default function Overlay() {
             </button>
           </div>
         )}
-      </div>
 
-      {/* Backdrop — clicking it closes the panel */}
+      </div>{/* end side panel */}
+
+      {/* ── Backdrop ── */}
       {open && (
         <div
           onClick={close}
           className="fixed inset-0 z-[2147483644] bg-black/10"
         />
       )}
+
     </div>
   )
 }

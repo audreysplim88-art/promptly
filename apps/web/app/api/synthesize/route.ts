@@ -6,20 +6,7 @@ import {
 } from "@/lib/prompts/system-synthesize"
 import type { Answer, Domain, OutputStyle, Question } from "@/lib/shared-types"
 import { API_LIMITS } from "@/lib/config"
-
-function corsHeaders(_req: NextRequest) {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Promptly-Secret"
-  }
-}
-
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.PROMPTLY_API_SECRET
-  if (!secret) return true
-  return req.headers.get("x-promptly-secret") === secret
-}
+import { corsHeaders, isAuthorized } from "@/lib/api-middleware"
 
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(req) })
