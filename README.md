@@ -132,10 +132,6 @@ The zip at `build/chrome-mv3-prod.zip` is ready for Chrome Web Store submission.
 
 ## Roadmap
 
-- **Phase 2** — Auth (Clerk) + usage tiers (free: 10 prompts/day, Pro: unlimited)
-- **Phase 3** — Stripe payments + upgrade flow
-- **Phase 4** — Prompt history, Firefox AMO release
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, dev workflow, and PR guidelines.
